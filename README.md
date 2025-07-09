@@ -1,0 +1,1 @@
+# sequential-thinking-mcp-v2

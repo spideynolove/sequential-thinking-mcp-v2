@@ -34,7 +34,7 @@ When `auto_validation=True` is set on a session, the system automatically execut
 ## Installation
 
 ```bash
-git clone https://github.com/your-org/sequential-thinking-mcp-v2.git
+git clone https://github.com/spideynolove/sequential-thinking-mcp-v2.git
 cd sequential-thinking-mcp-v2
 uv sync
 ```

@@ -1,21 +1,56 @@
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-import json
-import subprocess
-import sys
-import pkg_resources
+import importlib.metadata
 from models import (
     UnifiedSession, Memory, Collection, Thought, Branch, 
-    ArchitectureDecision, PackageInfo, CodePattern, CrossSystemContext,
-    SessionType, ThoughtStatus
+    ArchitectureDecision, PackageInfo, CrossSystemContext,
+    SessionType
 )
 from database import UnifiedDatabase
+from context_chunker import ContextChunker
 
 
 class UnifiedSessionManager:
     def __init__(self, db_path: str = "memory.db"):
         self.db = UnifiedDatabase(db_path)
         self.current_session: Optional[UnifiedSession] = None
+        self.context_chunker = ContextChunker()
+    
+    def _estimate_tokens(self) -> int:
+        if not self.current_session:
+            return 0
+        
+        total_content = []
+        total_content.append(self.current_session.problem)
+        total_content.append(self.current_session.success_criteria)
+        total_content.append(self.current_session.constraints)
+        
+        for thought in self.current_session.thoughts:
+            total_content.append(thought.content)
+        
+        for memory in self.current_session.memories:
+            total_content.append(memory.content)
+            total_content.append(memory.code_snippet)
+        
+        full_text = " ".join(total_content)
+        return int(len(full_text) / 3.5)
+    
+    def _check_context_size(self) -> Dict[str, Any]:
+        token_count = self._estimate_tokens()
+        if token_count > 25000:
+            window = self.context_chunker.chunk_session(self.current_session)
+            return {
+                "needs_chunking": True,
+                "current_tokens": token_count,
+                "chunked_tokens": window.total_tokens,
+                "chunks_created": len(window.chunks),
+                "priority_threshold": window.priority_threshold
+            }
+        return {
+            "needs_chunking": False,
+            "current_tokens": token_count,
+            "max_tokens": 25000
+        }
     
     def start_thinking_session(
         self, 
@@ -231,12 +266,12 @@ class UnifiedSessionManager:
         
         installed_packages = []
         try:
-            for dist in pkg_resources.working_set:
+            for dist in importlib.metadata.distributions():
                 package = PackageInfo(
-                    name=dist.project_name,
+                    name=dist.metadata['name'],
                     version=dist.version,
-                    description=f"Installed package: {dist.project_name}",
-                    relevance_score=self._calculate_relevance(dist.project_name, task_description),
+                    description=f"Installed package: {dist.metadata['name']}",
+                    relevance_score=self._calculate_relevance(dist.metadata['name'], task_description),
                     installation_status="installed",
                     session_id=self.current_session.id
                 )

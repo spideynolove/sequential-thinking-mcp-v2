@@ -1,11 +1,10 @@
 import asyncio
 import json
-import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from mcp.server import Server
-from mcp.server.models import Tool
+from mcp.types import Tool
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, ImageContent, EmbeddedResource
+from mcp.types import TextContent
 from session_manager import UnifiedSessionManager
 from mcp_tools import MCPToolsHandler
 
@@ -400,6 +399,28 @@ async def list_tools() -> List[Tool]:
                     "functionality_description": {"type": "string"}
                 },
                 "required": ["functionality_description"]
+            }
+        ),
+        Tool(
+            name="execute_auto_cycle",
+            description="Execute configurable auto-cycle workflow with optional step control",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "enable_automation": {"type": "boolean", "default": True},
+                    "skip_steps": {"type": "string", "default": ""},
+                    "custom_thoughts": {"type": "boolean", "default": False}
+                }
+            }
+        ),
+        Tool(
+            name="optimize_context_window",
+            description="Optimize context window for large sessions using priority-based chunking",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "required_types": {"type": "string", "default": ""}
+                }
             }
         )
     ]

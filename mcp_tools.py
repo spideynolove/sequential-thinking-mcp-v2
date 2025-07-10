@@ -1,8 +1,8 @@
-from typing import Dict, Any, List, Optional
 import json
+from typing import Dict, Any
 from session_manager import UnifiedSessionManager
 from auto_cycle import AutoCycleWorkflow
-from models import SessionType
+from models import CodePattern
 
 
 class MCPToolsHandler:
@@ -474,6 +474,18 @@ class MCPToolsHandler:
         except Exception as e:
             return {"error": str(e)}
     
+    def execute_auto_cycle(
+        self,
+        enable_automation: bool = True,
+        skip_steps: str = "",
+        custom_thoughts: bool = False
+    ) -> Dict[str, Any]:
+        try:
+            result = self.auto_cycle.execute_auto_cycle(enable_automation, skip_steps, custom_thoughts)
+            return result
+        except Exception as e:
+            return {"error": str(e)}
+    
     def explore_existing_apis(self, functionality: str) -> Dict[str, Any]:
         try:
             packages = self.session_manager.explore_packages(functionality)
@@ -501,7 +513,6 @@ class MCPToolsHandler:
             if not self.session_manager.current_session:
                 return {"error": "No active session"}
             
-            from models import CodePattern
             
             pattern = CodePattern(
                 pattern_type=pattern_type,
@@ -538,6 +549,41 @@ class MCPToolsHandler:
                 "existing_packages": packages,
                 "reinvention_risk": reinvention_check,
                 "recommendation": "Use existing packages" if packages else "Custom implementation may be needed"
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def optimize_context_window(self, required_types: str = "") -> Dict[str, Any]:
+        try:
+            context_check = self.session_manager._check_context_size()
+            
+            if context_check["needs_chunking"]:
+                required_list = [t.strip() for t in required_types.split(",") if t.strip()]
+                window = self.session_manager.context_chunker.chunk_session(self.session_manager.current_session)
+                
+                if required_list:
+                    optimized_window = self.session_manager.context_chunker.optimize_context_window(window, required_list)
+                    return {
+                        "optimization_applied": True,
+                        "original_tokens": context_check["current_tokens"],
+                        "optimized_tokens": optimized_window.total_tokens,
+                        "chunks_preserved": len(optimized_window.chunks),
+                        "required_types": required_list,
+                        "priority_threshold": optimized_window.priority_threshold
+                    }
+                else:
+                    return {
+                        "optimization_available": True,
+                        "current_tokens": context_check["current_tokens"],
+                        "chunked_tokens": context_check["chunked_tokens"],
+                        "chunks_available": context_check["chunks_created"],
+                        "recommendation": "Specify required_types for targeted optimization"
+                    }
+            
+            return {
+                "optimization_needed": False,
+                "current_tokens": context_check["current_tokens"],
+                "max_tokens": context_check["max_tokens"]
             }
         except Exception as e:
             return {"error": str(e)}

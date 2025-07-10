@@ -2,44 +2,35 @@ from typing import Dict, Any, List
 from datetime import datetime
 from session_manager import UnifiedSessionManager
 from models import ThoughtStatus, SessionType
+from workflow_manager import WorkflowManager
 
 
 class AutoCycleWorkflow:
     def __init__(self, session_manager: UnifiedSessionManager):
         self.session_manager = session_manager
+        self.workflow_manager = WorkflowManager(session_manager, session_manager.db, self)
     
-    def execute_auto_cycle(self, session_id: str = "") -> Dict[str, Any]:
+    def execute_auto_cycle(
+        self, 
+        enable_automation: bool = True,
+        skip_steps: str = "",
+        custom_thoughts: bool = False
+    ) -> Dict[str, Any]:
         session = self.session_manager.current_session
         if not session:
             return {"error": "No active session"}
         
-        if not session.auto_validation:
-            return {"error": "Auto-cycle not enabled for this session"}
+        if not enable_automation:
+            return {"message": "Auto-cycle disabled by user choice"}
         
-        results = {
+        inputs = {
             "session_id": session.id,
-            "steps_completed": [],
-            "total_steps": 5,
-            "start_time": datetime.now(),
-            "status": "running"
+            "skip_steps": skip_steps,
+            "custom_thoughts": custom_thoughts
         }
         
-        try:
-            results["steps_completed"].append(self._step_1_package_discovery())
-            results["steps_completed"].append(self._step_2_thought_generation())
-            results["steps_completed"].append(self._step_3_memory_storage())
-            results["steps_completed"].append(self._step_4_architecture_decisions())
-            results["steps_completed"].append(self._step_5_validation_analysis())
-            
-            results["status"] = "completed"
-            results["end_time"] = datetime.now()
-            
-        except Exception as e:
-            results["status"] = "failed"
-            results["error"] = str(e)
-            results["end_time"] = datetime.now()
-        
-        return results
+        execution_id = self.workflow_manager.execute_workflow("auto_cycle", session.id, inputs)
+        return self.workflow_manager.get_execution_status(execution_id)
     
     def _step_1_package_discovery(self) -> Dict[str, Any]:
         session = self.session_manager.current_session
@@ -58,10 +49,18 @@ class AutoCycleWorkflow:
         
         return {"step": 1, "name": "Package Discovery", "status": "skipped", "reason": "Not a coding session"}
     
-    def _step_2_thought_generation(self) -> Dict[str, Any]:
+    def _step_2_thought_generation(self, custom_thoughts: bool = False) -> Dict[str, Any]:
         session = self.session_manager.current_session
         if not session:
             return {"step": 2, "name": "Thought Generation", "status": "failed", "error": "No session"}
+        
+        if custom_thoughts:
+            return {
+                "step": 2,
+                "name": "Thought Generation",
+                "status": "skipped",
+                "reason": "Custom thoughts mode - use manual add_thought() calls"
+            }
         
         auto_thoughts = self._generate_auto_thoughts(session.problem, session.success_criteria)
         thought_ids = []

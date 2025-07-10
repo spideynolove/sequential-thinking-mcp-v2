@@ -1,7 +1,7 @@
+import uuid
 from typing import List
 from datetime import datetime
 from enum import Enum
-import uuid
 from dataclasses import dataclass, field
 
 

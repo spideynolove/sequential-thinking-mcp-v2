@@ -665,3 +665,53 @@ class MCPToolsHandler:
             content += "---\n\n"
         
         return content
+    
+    def list_sessions(self) -> Dict[str, Any]:
+        try:
+            sessions = self.session_manager.list_sessions()
+            return {
+                "sessions": sessions,
+                "count": len(sessions)
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def load_session(self, session_id: str) -> Dict[str, Any]:
+        try:
+            result = self.session_manager.load_session(session_id)
+            return result
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def query_memories(self, tags: str = "", content_contains: str = "") -> Dict[str, Any]:
+        try:
+            memories = self.session_manager.query_memories(tags, content_contains)
+            return {
+                "memories": memories,
+                "count": len(memories),
+                "tags": tags,
+                "content_contains": content_contains
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def get_active_session(self) -> Dict[str, Any]:
+        try:
+            session = self.session_manager.get_active_session()
+            return {"active_session": session}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def switch_session(self, session_id: str) -> Dict[str, Any]:
+        try:
+            result = self.session_manager.switch_session(session_id)
+            return result
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def delete_session(self, session_id: str) -> Dict[str, Any]:
+        try:
+            result = self.session_manager.delete_session(session_id)
+            return result
+        except Exception as e:
+            return {"error": str(e)}

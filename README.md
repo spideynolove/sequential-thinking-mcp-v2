@@ -1,6 +1,6 @@
 # Sequential Thinking MCP v2 - Unified with Memory Bank
 
-A unified Model Context Protocol (MCP) server that combines Sequential Thinking MCP and Memory Bank MCP into a single, powerful system with auto-cycle workflow, persistent memory, and cross-session continuity.
+A unified Model Context Protocol (MCP) server that combines Sequential Thinking MCP and Memory Bank MCP into a single system with 39 tools providing auto-cycle workflow, persistent memory, session management, and cross-session continuity.
 
 ## Features
 
@@ -24,7 +24,7 @@ A unified Model Context Protocol (MCP) server that combines Sequential Thinking 
 - **Validation Gates**: Prevent code reinvention with existing library checks
 
 ### Auto-cycle Workflow
-When `auto_validation=True` is set on a session, the system automatically executes:
+The system provides automated workflow capabilities through the `execute_auto_cycle()` tool:
 1. **Package Discovery**: Scan for relevant existing libraries
 2. **Thought Generation**: Create structured reasoning chains
 3. **Memory Storage**: Persist insights for future reference
@@ -79,6 +79,10 @@ start_coding_session(
     package_exploration_required=True
 )
 
+# Resume previous work
+list_sessions()  # See all saved sessions
+load_session("session-id-here")  # Resume specific session
+
 # Add coding thoughts with package suggestions
 add_coding_thought(
     content="Need async web framework for high performance API",
@@ -95,11 +99,17 @@ detect_code_reinvention(
 ### Auto-cycle Workflow
 
 ```python
-# Enable auto-cycle for systematic problem solving
+# Use auto-cycle for systematic problem solving
 start_coding_session(
     problem="Implement user authentication system",
-    success_criteria="Secure, maintainable, following best practices",
-    auto_validation=True  # Enables 5-step automation
+    success_criteria="Secure, maintainable, following best practices"
+)
+
+# Execute automated workflow
+execute_auto_cycle(
+    enable_automation=True,
+    skip_steps="",
+    custom_thoughts=False
 )
 
 # System automatically:
@@ -120,6 +130,10 @@ create_memory_session(
     session_type="coding_session"
 )
 
+# Query historical memories
+query_memories(tags="authentication,security")
+query_memories(content_contains="JWT token")
+
 # Store code patterns for reuse
 store_codebase_pattern(
     pattern_type="authentication",
@@ -139,6 +153,11 @@ prevent_reinvention_check("HTTP client for REST APIs")
 - `start_thinking_session()` - Start general thinking session
 - `start_coding_session()` - Start coding session with package discovery
 - `create_memory_session()` - Backward compatible memory session
+- `list_sessions()` - List all saved sessions
+- `load_session()` - Resume a specific session
+- `get_active_session()` - Get current active session info
+- `switch_session()` - Change active session
+- `delete_session()` - Delete a session and all related data
 
 ### Thinking Tools
 - `add_thought()` - Add structured reasoning step
@@ -152,6 +171,7 @@ prevent_reinvention_check("HTTP client for REST APIs")
 - `revise_memory()` - Update stored memories
 - `create_collection()` - Group related memories
 - `merge_collection()` - Combine memory collections
+- `query_memories()` - Search memories by tags or content
 
 ### Coding Integration
 - `explore_packages()` - Discover relevant libraries
@@ -165,6 +185,8 @@ prevent_reinvention_check("HTTP client for REST APIs")
 - `export_session_to_file()` - Export to markdown/JSON
 - `create_project_structure()` - Create project folders
 - `load_project_context()` - Resume previous work
+- `execute_auto_cycle()` - Run automated 5-step workflow
+- `optimize_context_window()` - Manage large session contexts
 
 ## Database Schema
 
@@ -189,6 +211,7 @@ Add to your `claude_desktop_config.json`:
     "sequential-thinking-unified": {
       "command": "uv",
       "args": [
+        "run",
         "/path/to/sequential-thinking-mcp-v2/main.py"
       ]
     }

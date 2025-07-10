@@ -432,3 +432,111 @@ class UnifiedSessionManager:
             return 0.5
         
         return 0.1
+    
+    def list_sessions(self) -> List[Dict[str, Any]]:
+        import sqlite3
+        conn = sqlite3.connect(self.db.db_path)
+        cursor = conn.execute('''
+            SELECT id, problem, success_criteria, session_type, created_at 
+            FROM sessions 
+            ORDER BY created_at DESC
+        ''')
+        sessions = []
+        for row in cursor.fetchall():
+            sessions.append({
+                "id": row[0],
+                "problem": row[1],
+                "success_criteria": row[2],
+                "session_type": row[3],
+                "created_at": row[4]
+            })
+        conn.close()
+        return sessions
+    
+    def load_session(self, session_id: str) -> Dict[str, Any]:
+        session = self.db.get_session(session_id)
+        if not session:
+            raise ValueError(f"Session {session_id} not found")
+        
+        self.current_session = session
+        return {
+            "session_id": session.id,
+            "problem": session.problem,
+            "success_criteria": session.success_criteria,
+            "session_type": session.session_type.value,
+            "thoughts_count": len(session.thoughts),
+            "memories_count": len(session.memories),
+            "status": "loaded"
+        }
+    
+    def query_memories(self, tags: str = "", content_contains: str = "") -> List[Dict[str, Any]]:
+        if not self.current_session:
+            raise ValueError("No active session")
+        
+        memories = self.current_session.memories
+        filtered_memories = []
+        
+        for memory in memories:
+            if tags:
+                tag_list = [t.strip() for t in tags.split(",")]
+                if not any(tag in memory.tags for tag in tag_list):
+                    continue
+            
+            if content_contains:
+                if content_contains.lower() not in memory.content.lower():
+                    continue
+            
+            filtered_memories.append({
+                "id": memory.id,
+                "content": memory.content,
+                "tags": memory.tags,
+                "confidence": memory.confidence,
+                "pattern_type": memory.pattern_type,
+                "language": memory.language
+            })
+        
+        return filtered_memories
+    
+    def get_active_session(self) -> Optional[Dict[str, Any]]:
+        if not self.current_session:
+            return None
+        
+        return {
+            "session_id": self.current_session.id,
+            "problem": self.current_session.problem,
+            "success_criteria": self.current_session.success_criteria,
+            "session_type": self.current_session.session_type.value,
+            "created_at": self.current_session.created_at.isoformat(),
+            "thoughts_count": len(self.current_session.thoughts),
+            "memories_count": len(self.current_session.memories)
+        }
+    
+    def switch_session(self, session_id: str) -> Dict[str, Any]:
+        return self.load_session(session_id)
+    
+    def delete_session(self, session_id: str) -> Dict[str, Any]:
+        import sqlite3
+        conn = sqlite3.connect(self.db.db_path)
+        
+        tables = [
+            "thoughts", "memories", "collections", "branches", 
+            "architecture_decisions", "packages", "code_patterns", 
+            "cross_system_context", "sessions"
+        ]
+        
+        for table in tables:
+            if table == "sessions":
+                conn.execute(f"DELETE FROM {table} WHERE id = ?", (session_id,))
+            else:
+                conn.execute(f"DELETE FROM {table} WHERE session_id = ?", (session_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        if self.current_session and self.current_session.id == session_id:
+            self.current_session = None
+        
+        return {
+            "session_id": session_id,
+            "status": "deleted"
+        }

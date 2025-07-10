@@ -422,6 +422,66 @@ async def list_tools() -> List[Tool]:
                     "required_types": {"type": "string", "default": ""}
                 }
             }
+        ),
+        Tool(
+            name="list_sessions",
+            description="List all saved sessions",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="load_session",
+            description="Resume a specific session",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"}
+                },
+                "required": ["session_id"]
+            }
+        ),
+        Tool(
+            name="query_memories",
+            description="Search memories by tags or content",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tags": {"type": "string", "default": ""},
+                    "content_contains": {"type": "string", "default": ""}
+                }
+            }
+        ),
+        Tool(
+            name="get_active_session",
+            description="Get current active session info",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="switch_session",
+            description="Change active session",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"}
+                },
+                "required": ["session_id"]
+            }
+        ),
+        Tool(
+            name="delete_session",
+            description="Delete a session and all related data",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"}
+                },
+                "required": ["session_id"]
+            }
         )
     ]
 

@@ -171,11 +171,14 @@ class UnifiedDatabase:
             if not row:
                 return None
             
+            from datetime import datetime
             session = UnifiedSession(
                 id=row[0], problem=row[1], success_criteria=row[2],
                 constraints=row[3], session_type=SessionType(row[4]),
                 codebase_context=row[5], package_exploration_required=row[6],
-                auto_validation=row[7], created_at=row[8], updated_at=row[9]
+                auto_validation=row[7], 
+                created_at=datetime.fromisoformat(row[8]) if isinstance(row[8], str) else row[8],
+                updated_at=datetime.fromisoformat(row[9]) if isinstance(row[9], str) else row[9]
             )
             
             session.memories = self.get_memories_by_session(session_id)

@@ -698,7 +698,15 @@ class MCPToolsHandler:
     def get_active_session(self) -> Dict[str, Any]:
         try:
             session = self.session_manager.get_active_session()
-            return {"active_session": session}
+            if session:
+                return {"active_session": session}
+            else:
+                sessions = self.session_manager.list_sessions()
+                return {
+                    "active_session": None,
+                    "available_sessions": len(sessions),
+                    "message": "No active session. Use load_session() or start a new session."
+                }
         except Exception as e:
             return {"error": str(e)}
     

@@ -15,6 +15,7 @@ class UnifiedSessionManager:
         self.db = UnifiedDatabase(db_path)
         self.current_session: Optional[UnifiedSession] = None
         self.context_chunker = ContextChunker()
+        self._load_last_active_session()
     
     def _estimate_tokens(self) -> int:
         if not self.current_session:
@@ -540,3 +541,12 @@ class UnifiedSessionManager:
             "session_id": session_id,
             "status": "deleted"
         }
+    
+    def _load_last_active_session(self) -> None:
+        try:
+            sessions = self.list_sessions()
+            if sessions:
+                latest_session_id = sessions[0]["id"]
+                self.current_session = self.db.get_session(latest_session_id)
+        except Exception:
+            pass

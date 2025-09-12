@@ -11,3 +11,6 @@ wheels/
 uv.lock
 .python-version
 *.txt
+
+memory-bank/
+temp/

@@ -8,15 +8,6 @@ from dataclasses import dataclass, field
 class SessionType(Enum):
     GENERAL = "general"
     CODING = "coding"
-    DEBUGGING = "debugging"
-    ARCHITECTURE = "architecture"
-
-
-class ThoughtStatus(Enum):
-    PENDING = "pending"
-    ACTIVE = "active"
-    COMPLETED = "completed"
-    ARCHIVED = "archived"
 
 
 @dataclass
@@ -28,19 +19,14 @@ class UnifiedSession:
     session_type: SessionType = SessionType.GENERAL
     codebase_context: str = ""
     package_exploration_required: bool = True
-    auto_validation: bool = False
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     
     memories: List["Memory"] = field(default_factory=list)
-    collections: List["Collection"] = field(default_factory=list)
-    
     thoughts: List["Thought"] = field(default_factory=list)
     branches: List["Branch"] = field(default_factory=list)
-    
     architecture_decisions: List["ArchitectureDecision"] = field(default_factory=list)
     discovered_packages: List["PackageInfo"] = field(default_factory=list)
-    code_patterns: List["CodePattern"] = field(default_factory=list)
 
 
 @dataclass
@@ -61,14 +47,6 @@ class Memory:
     updated_at: datetime = field(default_factory=datetime.now)
 
 
-@dataclass
-class Collection:
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    name: str = ""
-    purpose: str = ""
-    memory_ids: List[str] = field(default_factory=list)
-    session_id: str = ""
-    created_at: datetime = field(default_factory=datetime.now)
 
 
 @dataclass
@@ -79,11 +57,8 @@ class Thought:
     content: str = ""
     confidence: float = 0.8
     dependencies: List[str] = field(default_factory=list)
-    status: ThoughtStatus = ThoughtStatus.PENDING
-    
     explore_packages: bool = False
     suggested_packages: List[str] = field(default_factory=list)
-    
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -126,22 +101,3 @@ class PackageInfo:
     discovered_at: datetime = field(default_factory=datetime.now)
 
 
-@dataclass
-class CodePattern:
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    pattern_type: str = ""
-    code_snippet: str = ""
-    description: str = ""
-    language: str = ""
-    file_path: str = ""
-    tags: List[str] = field(default_factory=list)
-    session_id: str = ""
-    created_at: datetime = field(default_factory=datetime.now)
-
-
-@dataclass
-class CrossSystemContext:
-    session_id: str = ""
-    external_context: str = ""
-    shared_packages: List[str] = field(default_factory=list)
-    sync_timestamp: datetime = field(default_factory=datetime.now)

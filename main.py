@@ -18,27 +18,15 @@ tools_handler = MCPToolsHandler(session_manager)
 async def list_tools() -> List[Tool]:
     return [
         Tool(
-            name="start_thinking_session",
-            description="Start a new thinking session with problem and success criteria",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "problem": {"type": "string"},
-                    "success_criteria": {"type": "string"},
-                    "constraints": {"type": "string", "default": ""}
-                },
-                "required": ["problem", "success_criteria"]
-            }
-        ),
-        Tool(
-            name="start_coding_session",
-            description="Start a new coding session with enhanced package discovery",
+            name="start_session",
+            description="Start a new session (thinking, coding, or memory-focused)",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "problem": {"type": "string"},
                     "success_criteria": {"type": "string"},
                     "constraints": {"type": "string", "default": ""},
+                    "session_type": {"type": "string", "default": "general", "enum": ["general", "coding", "memory"]},
                     "codebase_context": {"type": "string", "default": ""},
                     "package_exploration_required": {"type": "boolean", "default": True}
                 },
@@ -46,36 +34,8 @@ async def list_tools() -> List[Tool]:
             }
         ),
         Tool(
-            name="create_memory_session",
-            description="Create a new memory session (backward compatible)",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "problem": {"type": "string"},
-                    "success_criteria": {"type": "string"},
-                    "constraints": {"type": "string", "default": ""},
-                    "session_type": {"type": "string", "default": "general"}
-                },
-                "required": ["problem", "success_criteria"]
-            }
-        ),
-        Tool(
             name="add_thought",
-            description="Add a new thought to the current session",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "content": {"type": "string"},
-                    "branch_id": {"type": "string", "default": ""},
-                    "confidence": {"type": "number", "default": 0.8},
-                    "dependencies": {"type": "string", "default": ""}
-                },
-                "required": ["content"]
-            }
-        ),
-        Tool(
-            name="add_coding_thought",
-            description="Add a coding-specific thought with package exploration",
+            description="Add a new thought to the current session with optional package exploration",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -83,22 +43,9 @@ async def list_tools() -> List[Tool]:
                     "branch_id": {"type": "string", "default": ""},
                     "confidence": {"type": "number", "default": 0.8},
                     "dependencies": {"type": "string", "default": ""},
-                    "explore_packages": {"type": "boolean", "default": True}
+                    "explore_packages": {"type": "boolean", "default": False}
                 },
                 "required": ["content"]
-            }
-        ),
-        Tool(
-            name="revise_thought",
-            description="Revise an existing thought",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "thought_id": {"type": "string"},
-                    "new_content": {"type": "string"},
-                    "confidence": {"type": "number", "default": 0.8}
-                },
-                "required": ["thought_id", "new_content"]
             }
         ),
         Tool(
@@ -128,57 +75,46 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="store_memory",
-            description="Store a memory with enhanced coding support",
+            description="Store a memory with code snippets and patterns",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "content": {"type": "string"},
-                    "collection_id": {"type": "string", "default": ""},
                     "confidence": {"type": "number", "default": 0.8},
-                    "dependencies": {"type": "string", "default": ""},
                     "code_snippet": {"type": "string", "default": ""},
                     "language": {"type": "string", "default": ""},
-                    "pattern_type": {"type": "string", "default": ""}
+                    "pattern_type": {"type": "string", "default": ""},
+                    "tags": {"type": "string", "default": ""}
                 },
                 "required": ["content"]
             }
         ),
         Tool(
-            name="revise_memory",
-            description="Revise an existing memory",
+            name="query_memories",
+            description="Search memories by tags or content",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "memory_id": {"type": "string"},
-                    "new_content": {"type": "string"},
-                    "confidence": {"type": "number", "default": 0.8}
-                },
-                "required": ["memory_id", "new_content"]
+                    "tags": {"type": "string", "default": ""},
+                    "content_contains": {"type": "string", "default": ""}
+                }
             }
         ),
         Tool(
-            name="create_collection",
-            description="Create a collection of related memories",
+            name="record_decision",
+            description="Record an architecture decision with context",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string"},
-                    "from_memory": {"type": "string"},
-                    "purpose": {"type": "string"}
+                    "decision_title": {"type": "string"},
+                    "context": {"type": "string"},
+                    "options_considered": {"type": "string"},
+                    "chosen_option": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "consequences": {"type": "string"},
+                    "package_dependencies": {"type": "string", "default": ""}
                 },
-                "required": ["name", "from_memory", "purpose"]
-            }
-        ),
-        Tool(
-            name="merge_collection",
-            description="Merge a collection with memories",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "collection_id": {"type": "string"},
-                    "target_memory": {"type": "string", "default": ""}
-                },
-                "required": ["collection_id"]
+                "required": ["decision_title", "context", "options_considered", "chosen_option", "rationale", "consequences"]
             }
         ),
         Tool(
@@ -194,233 +130,17 @@ async def list_tools() -> List[Tool]:
             }
         ),
         Tool(
-            name="record_architecture_decision",
-            description="Record an architecture decision with context",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "decision_title": {"type": "string"},
-                    "context": {"type": "string"},
-                    "options_considered": {"type": "string"},
-                    "chosen_option": {"type": "string"},
-                    "rationale": {"type": "string"},
-                    "consequences": {"type": "string"},
-                    "package_dependencies": {"type": "string", "default": ""},
-                    "thinking_session_id": {"type": "string", "default": ""}
-                },
-                "required": ["decision_title", "context", "options_considered", "chosen_option", "rationale", "consequences"]
-            }
-        ),
-        Tool(
-            name="detect_code_reinvention",
-            description="Detect potential code reinvention",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "proposed_code": {"type": "string"},
-                    "existing_packages_checked": {"type": "string", "default": ""},
-                    "confidence_threshold": {"type": "number", "default": 0.8}
-                },
-                "required": ["proposed_code"]
-            }
-        ),
-        Tool(
-            name="query_architecture_decisions",
-            description="Query previous architecture decisions",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "pattern": {"type": "string", "default": ""},
-                    "technology": {"type": "string", "default": ""},
-                    "package": {"type": "string", "default": ""},
-                    "similarity_threshold": {"type": "number", "default": 0.7}
-                }
-            }
-        ),
-        Tool(
-            name="get_cross_system_context",
-            description="Get cross-system context for session",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "session_id": {"type": "string", "default": ""}
-                }
-            }
-        ),
-        Tool(
-            name="set_external_context",
-            description="Set external context for cross-system integration",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "external_context": {"type": "string"},
-                    "session_id": {"type": "string", "default": ""}
-                },
-                "required": ["external_context"]
-            }
-        ),
-        Tool(
-            name="analyze_thinking",
-            description="Analyze current thinking session",
-            inputSchema={
-                "type": "object",
-                "properties": {}
-            }
-        ),
-        Tool(
-            name="analyze_memories",
-            description="Analyze current memory session",
-            inputSchema={
-                "type": "object",
-                "properties": {}
-            }
-        ),
-        Tool(
-            name="export_session_to_file",
-            description="Export session to file",
+            name="export_session",
+            description="Export session or memories to file",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "filename": {"type": "string"},
-                    "format": {"type": "string", "default": "markdown"}
-                },
-                "required": ["filename"]
-            }
-        ),
-        Tool(
-            name="export_memories_to_file",
-            description="Export memories to file",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "filename": {"type": "string"},
+                    "format": {"type": "string", "default": "markdown", "enum": ["markdown", "json"]},
+                    "export_type": {"type": "string", "default": "session", "enum": ["session", "memories"]},
                     "tags": {"type": "string", "default": ""}
                 },
                 "required": ["filename"]
-            }
-        ),
-        Tool(
-            name="create_project_structure",
-            description="Create project structure for memory bank",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "project_name": {"type": "string"}
-                },
-                "required": ["project_name"]
-            }
-        ),
-        Tool(
-            name="load_project_context",
-            description="Load project context from existing structure",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "project_path": {"type": "string", "default": "memory-bank"}
-                }
-            }
-        ),
-        Tool(
-            name="update_project_index",
-            description="Update project knowledge index",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "section": {"type": "string"},
-                    "content": {"type": "string"}
-                },
-                "required": ["section", "content"]
-            }
-        ),
-        Tool(
-            name="discover_packages",
-            description="Discover available packages",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "scan_imports": {"type": "boolean", "default": True}
-                }
-            }
-        ),
-        Tool(
-            name="validate_package_usage",
-            description="Validate code against existing packages",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "code_snippet": {"type": "string"}
-                },
-                "required": ["code_snippet"]
-            }
-        ),
-        Tool(
-            name="explore_existing_apis",
-            description="Explore existing APIs for functionality",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "functionality": {"type": "string"}
-                },
-                "required": ["functionality"]
-            }
-        ),
-        Tool(
-            name="store_codebase_pattern",
-            description="Store a codebase pattern for reuse",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "pattern_type": {"type": "string"},
-                    "code_snippet": {"type": "string"},
-                    "description": {"type": "string", "default": ""},
-                    "file_path": {"type": "string", "default": ""},
-                    "language": {"type": "string", "default": ""},
-                    "tags": {"type": "string", "default": ""}
-                },
-                "required": ["pattern_type", "code_snippet"]
-            }
-        ),
-        Tool(
-            name="load_codebase_context",
-            description="Load codebase context into memory",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "project_path": {"type": "string", "default": ""}
-                }
-            }
-        ),
-        Tool(
-            name="prevent_reinvention_check",
-            description="Check if functionality might already exist",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "functionality_description": {"type": "string"}
-                },
-                "required": ["functionality_description"]
-            }
-        ),
-        Tool(
-            name="execute_auto_cycle",
-            description="Execute configurable auto-cycle workflow with optional step control",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "enable_automation": {"type": "boolean", "default": True},
-                    "skip_steps": {"type": "string", "default": ""},
-                    "custom_thoughts": {"type": "boolean", "default": False}
-                }
-            }
-        ),
-        Tool(
-            name="optimize_context_window",
-            description="Optimize context window for large sessions using priority-based chunking",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "required_types": {"type": "string", "default": ""}
-                }
             }
         ),
         Tool(
@@ -443,44 +163,11 @@ async def list_tools() -> List[Tool]:
             }
         ),
         Tool(
-            name="query_memories",
-            description="Search memories by tags or content",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "tags": {"type": "string", "default": ""},
-                    "content_contains": {"type": "string", "default": ""}
-                }
-            }
-        ),
-        Tool(
-            name="get_active_session",
-            description="Get current active session info",
+            name="analyze_session",
+            description="Analyze current session completeness and insights",
             inputSchema={
                 "type": "object",
                 "properties": {}
-            }
-        ),
-        Tool(
-            name="switch_session",
-            description="Change active session",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "session_id": {"type": "string"}
-                },
-                "required": ["session_id"]
-            }
-        ),
-        Tool(
-            name="delete_session",
-            description="Delete a session and all related data",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "session_id": {"type": "string"}
-                },
-                "required": ["session_id"]
             }
         )
     ]

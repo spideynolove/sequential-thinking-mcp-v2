@@ -12,5 +12,6 @@ uv.lock
 .python-version
 *.txt
 
-memory-bank/
+# memory-bank/
 temp/
+trash/

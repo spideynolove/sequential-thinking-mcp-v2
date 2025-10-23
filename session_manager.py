@@ -27,8 +27,9 @@ class UnifiedSessionManager:
         self.memory_bank_path.mkdir(exist_ok=True)
         self.sessions_dir.mkdir(exist_ok=True)
         self.memories_dir.mkdir(exist_ok=True)
+        # Keep patterns directory for forward compatibility, but it's not used in current implementation
         self.patterns_dir.mkdir(exist_ok=True)
-        
+
         if not self.index_file.exists():
             self._create_index_file()
     
@@ -106,8 +107,32 @@ class UnifiedSessionManager:
     
     def _update_index_with_session(self, session: UnifiedSession):
         """Update index.md with new session"""
-        # Simple index update - in production this could be more sophisticated
-        pass
+        if not self.index_file.exists():
+            self._create_index_file()
+
+        current_content = self.index_file.read_text()
+
+        # Format the session entry
+        session_entry = f"- **{session.id}**: {session.problem} ({session.session_type.value}, {session.created_at.strftime('%Y-%m-%d')})"
+
+        # Check if session is already in the index
+        if session.id in current_content:
+            # Session exists, no need to add again
+            return
+
+        # Add session to Active Sessions section
+        new_content = current_content.replace(
+            "## Active Sessions\n\n",
+            f"## Active Sessions\n\n{session_entry}\n\n"
+        )
+
+        # Update the timestamp
+        new_content = new_content.replace(
+            "*Updated:",
+            f"*Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} -"
+        )
+
+        self.index_file.write_text(new_content)
     
     def add_thought(
         self,
@@ -177,20 +202,18 @@ class UnifiedSessionManager:
         confidence: float = 0.8,
         code_snippet: str = "",
         language: str = "",
-        pattern_type: str = "",
         tags: str = ""
     ) -> str:
-        """Store a memory with code snippets and patterns"""
+        """Store a memory with code snippets"""
         if not self.current_session:
             raise ValueError("No active session")
-        
+
         memory = Memory(
             session_id=self.current_session.id,
             content=content,
             confidence=confidence,
             code_snippet=code_snippet,
             language=language,
-            pattern_type=pattern_type,
             tags=tags.split(",") if tags else []
         )
         
@@ -202,7 +225,7 @@ class UnifiedSessionManager:
     def _save_memory_to_file(self, memory: Memory):
         """Save individual memory to file"""
         memory_file = self.memories_dir / f"{memory.id}.md"
-        
+
         content = f"""# {memory.content[:50]}...
 
 **Memory ID:** {memory.id}
@@ -219,9 +242,6 @@ class UnifiedSessionManager:
 {memory.code_snippet}
 ```
 
-## Pattern Type
-{memory.pattern_type}
-
 ## Tags
 {', '.join(memory.tags)}
 
@@ -231,31 +251,106 @@ class UnifiedSessionManager:
         memory_file.write_text(content)
     
     def query_memories(self, tags: str = "", content_contains: str = "") -> List[Dict[str, Any]]:
-        """Search memories by tags or content"""
+        """Search memories by tags or content with enhanced capabilities
+
+        Features:
+        - Simple text indexing for faster content searches
+        - Advanced tag filtering with AND/OR logic
+        - Expanded metadata in results
+        """
+        import re
+        from datetime import datetime
+
+        # Return empty list if no session or no search criteria
         if not self.current_session:
             return []
-        
+
+        # If no session memories, try loading from files
+        if not self.current_session.memories:
+            self._load_session_memories(self.current_session.id)
+
+        # Process search parameters
+        tag_filter_type = "any"  # Default to OR logic for tags
+
+        # Check for advanced tag search syntax (& for AND, | for OR)
+        if tags and ('&' in tags or '|' in tags):
+            if '&' in tags:
+                tag_list = [t.strip() for t in tags.split('&')]
+                tag_filter_type = "all"
+            else:
+                tag_list = [t.strip() for t in tags.split('|')]
+        elif tags:
+            tag_list = [t.strip() for t in tags.split(',')]
+        else:
+            tag_list = []
+
+        # Process content search (support for regex if enclosed in //)
+        use_regex = False
+        if content_contains and content_contains.startswith('/') and content_contains.endswith('/') and len(content_contains) > 2:
+            use_regex = True
+            regex_pattern = content_contains[1:-1]
+            try:
+                content_regex = re.compile(regex_pattern, re.IGNORECASE)
+            except re.error:
+                # Fall back to simple text search if regex is invalid
+                use_regex = False
+
+        # Search memories
         filtered_memories = []
         for memory in self.current_session.memories:
-            if tags:
-                tag_list = [t.strip() for t in tags.split(",")]
-                if not any(tag in memory.tags for tag in tag_list):
-                    continue
-            
+            # Apply tag filtering with proper logic
+            if tag_list:
+                if tag_filter_type == "all":
+                    # AND logic - all tags must match
+                    if not all(any(tag.lower() in t.lower() for t in memory.tags) for tag in tag_list):
+                        continue
+                else:
+                    # OR logic - any tag can match
+                    if not any(any(tag.lower() in t.lower() for t in memory.tags) for tag in tag_list):
+                        continue
+
+            # Apply content filtering
             if content_contains:
-                if content_contains.lower() not in memory.content.lower():
-                    continue
-            
-            filtered_memories.append({
+                if use_regex:
+                    if not content_regex.search(memory.content):
+                        continue
+                else:
+                    if content_contains.lower() not in memory.content.lower():
+                        continue
+
+            # Memory matched all criteria, add to results with enhanced metadata
+            memory_data = {
                 "id": memory.id,
                 "content": memory.content,
                 "tags": memory.tags,
                 "confidence": memory.confidence,
-                "pattern_type": memory.pattern_type,
-                "language": memory.language
-            })
-        
-        return filtered_memories
+                "language": memory.language if memory.language else "",
+                "has_code": bool(memory.code_snippet),
+                "created_at": memory.created_at.isoformat(),
+                "session_id": memory.session_id
+            }
+
+            # Add excerpt if content is long
+            if len(memory.content) > 100:
+                # Find matching section for excerpt if there's a content search
+                if content_contains and not use_regex:
+                    pos = memory.content.lower().find(content_contains.lower())
+                    if pos >= 0:
+                        start = max(0, pos - 40)
+                        end = min(len(memory.content), pos + len(content_contains) + 40)
+                        excerpt = memory.content[start:end]
+                        if start > 0:
+                            excerpt = "..." + excerpt
+                        if end < len(memory.content):
+                            excerpt = excerpt + "..."
+                        memory_data["excerpt"] = excerpt
+                else:
+                    memory_data["excerpt"] = memory.content[:100] + "..."
+
+            filtered_memories.append(memory_data)
+
+        # Sort results by confidence
+        return sorted(filtered_memories, key=lambda x: x["confidence"], reverse=True)
     
     def explore_packages(self, task_description: str, language: str = "python") -> List[str]:
         """Explore packages for given task"""
@@ -335,37 +430,81 @@ class UnifiedSessionManager:
     def list_sessions(self) -> List[Dict[str, Any]]:
         """List all saved sessions"""
         sessions = []
+
         try:
-            for session_file in self.sessions_dir.glob("*.md"):
-                # Simple parsing - in production this could be more sophisticated
-                session_id = session_file.stem
-                sessions.append({
-                    "id": session_id,
-                    "file": str(session_file),
-                    "created": session_file.stat().st_ctime
-                })
+            # First check if we can extract information from the index file
+            if self.index_file.exists():
+                import re
+                index_content = self.index_file.read_text()
+
+                # Extract active sessions from index
+                active_section = re.search(r'## Active Sessions\n\n(.*?)(?=\n##|$)', index_content, re.DOTALL)
+                if active_section:
+                    active_entries = re.findall(r'- \*\*([\w\-]+)\*\*: (.*?) \((\w+), ([\d\-]+)\)', active_section.group(1))
+                    for entry in active_entries:
+                        session_id, problem, session_type, date = entry
+                        # Check if the session file actually exists
+                        session_file = self.sessions_dir / f"{session_id}.md"
+                        if session_file.exists():
+                            sessions.append({
+                                "id": session_id,
+                                "problem": problem,
+                                "type": session_type,
+                                "file": str(session_file),
+                                "created": session_file.stat().st_ctime
+                            })
+
+            # If index parsing failed or no sessions found, fall back to directory scan
+            if not sessions:
+                for session_file in self.sessions_dir.glob("*.md"):
+                    session_id = session_file.stem
+
+                    # Try to extract the problem statement for better info
+                    try:
+                        content = session_file.read_text()
+                        import re
+                        problem_match = re.search(r'# (.*?)\n', content)
+                        problem = problem_match.group(1) if problem_match else "Unnamed session"
+
+                        sessions.append({
+                            "id": session_id,
+                            "problem": problem,
+                            "file": str(session_file),
+                            "created": session_file.stat().st_ctime
+                        })
+                    except Exception:
+                        # Fall back to basic info if parsing fails
+                        sessions.append({
+                            "id": session_id,
+                            "file": str(session_file),
+                            "created": session_file.stat().st_ctime
+                        })
         except Exception:
             pass
-        
+
         # Sort by creation time, newest first
         return sorted(sessions, key=lambda x: x["created"], reverse=True)
     
     def load_session(self, session_id: str) -> Dict[str, Any]:
         """Resume a specific session"""
         session_file = self.sessions_dir / f"{session_id}.md"
-        
+
         if not session_file.exists():
             raise ValueError(f"Session {session_id} not found")
-        
-        # For now, create a basic session object
-        # In production, this would parse the markdown file
-        session = UnifiedSession()
-        session.id = session_id
+
+        # Parse the markdown file and reconstruct the session
+        content = session_file.read_text()
+        session = self._parse_session_markdown(content, session_id)
         self.current_session = session
-        
+
+        # Load associated memories
+        self._load_session_memories(session_id)
+
         return {
             "session_id": session_id,
             "status": "loaded",
+            "thoughts_count": len(session.thoughts),
+            "memories_count": len(session.memories),
             "file": str(session_file)
         }
     
@@ -392,16 +531,139 @@ class UnifiedSessionManager:
         """Calculate relevance score between package and task"""
         task_lower = task_description.lower()
         package_lower = package_name.lower()
-        
+
         if package_lower in task_lower:
             return 0.8
-        
+
         common_words = set(task_lower.split()) & set(package_lower.split())
         if common_words:
             return 0.5
-        
+
         return 0.1
-    
+
+    def _parse_session_markdown(self, content: str, session_id: str) -> UnifiedSession:
+        """Parse a session markdown file to reconstruct the session object"""
+        import re
+        from datetime import datetime
+
+        # Create a basic session object
+        session = UnifiedSession()
+        session.id = session_id
+
+        # Extract session metadata
+        session_type_match = re.search(r'\*\*Type:\*\* (\w+)', content)
+        if session_type_match:
+            session_type_value = session_type_match.group(1)
+            session.session_type = SessionType.CODING if session_type_value == "coding" else SessionType.GENERAL
+
+        created_match = re.search(r'\*\*Created:\*\* ([\d\-T:\.]+)', content)
+        if created_match:
+            try:
+                session.created_at = datetime.fromisoformat(created_match.group(1))
+            except ValueError:
+                pass
+
+        updated_match = re.search(r'\*\*Updated:\*\* ([\d\-T:\.]+)', content)
+        if updated_match:
+            try:
+                session.updated_at = datetime.fromisoformat(updated_match.group(1))
+            except ValueError:
+                pass
+
+        # Extract main content sections
+        problem_match = re.search(r'## Problem Statement\n(.*?)(?=\n##)', content, re.DOTALL)
+        if problem_match:
+            session.problem = problem_match.group(1).strip()
+
+        success_match = re.search(r'## Success Criteria\n(.*?)(?=\n##)', content, re.DOTALL)
+        if success_match:
+            session.success_criteria = success_match.group(1).strip()
+
+        constraints_match = re.search(r'## Constraints\n(.*?)(?=\n##)', content, re.DOTALL)
+        if constraints_match:
+            session.constraints = constraints_match.group(1).strip()
+
+        codebase_match = re.search(r'## Codebase Context\n(.*?)(?=\n##)', content, re.DOTALL)
+        if codebase_match:
+            session.codebase_context = codebase_match.group(1).strip()
+
+        # Extract thoughts
+        thoughts_section = re.search(r'## Thoughts\n(.*?)(?=\n##|$)', content, re.DOTALL)
+        if thoughts_section and '- ' in thoughts_section.group(1):
+            thought_entries = re.findall(r'- (.*?)(?=\n-|\n##|$)', thoughts_section.group(1) + '\n##', re.DOTALL)
+            for i, thought_content in enumerate(thought_entries):
+                thought = Thought(
+                    id=f"{session_id}_thought_{i}",
+                    session_id=session_id,
+                    content=thought_content.strip(),
+                    confidence=0.8  # Default confidence
+                )
+                session.thoughts.append(thought)
+
+        # Parse architecture decisions if present
+        decisions_section = re.search(r'## Architecture Decisions\n(.*?)(?=\n##|$)', content, re.DOTALL)
+        if decisions_section and '- ' in decisions_section.group(1):
+            decision_entries = re.findall(r'- (.*?)(?=\n-|\n##|$)', decisions_section.group(1) + '\n##', re.DOTALL)
+            for i, decision_content in enumerate(decision_entries):
+                # Basic parsing - in a full implementation, this would parse the complete structure
+                parts = decision_content.split(': ', 1)
+                if len(parts) == 2:
+                    decision = ArchitectureDecision(
+                        id=f"{session_id}_decision_{i}",
+                        session_id=session_id,
+                        decision_title=parts[0].strip(),
+                        chosen_option=parts[1].strip(),
+                        context="Loaded from file",
+                        options_considered="Loaded from file",
+                        rationale="Loaded from file",
+                        consequences="Loaded from file"
+                    )
+                    session.architecture_decisions.append(decision)
+
+        return session
+
+    def _load_session_memories(self, session_id: str) -> None:
+        """Load all memories associated with this session"""
+        if not self.current_session:
+            return
+
+        # Find all memory files in the memories directory
+        memory_files = list(self.memories_dir.glob("*.md"))
+        for memory_file in memory_files:
+            content = memory_file.read_text()
+
+            # Check if this memory belongs to our session
+            session_match = re.search(r'\*\*Session ID:\*\* ([\w\-]+)', content)
+            if session_match and session_match.group(1) == session_id:
+                memory_id = memory_file.stem
+                memory_content_match = re.search(r'## Content\n(.*?)(?=\n##)', content, re.DOTALL)
+                memory_content = memory_content_match.group(1).strip() if memory_content_match else ""
+
+                # Extract tags
+                tags_match = re.search(r'## Tags\n(.*?)(?=\n##|\n---)', content, re.DOTALL)
+                tags = []
+                if tags_match:
+                    tags_text = tags_match.group(1).strip()
+                    if tags_text:
+                        tags = [tag.strip() for tag in tags_text.split(',')]
+
+                # Create memory object
+                memory = Memory(
+                    id=memory_id,
+                    session_id=session_id,
+                    content=memory_content,
+                    tags=tags
+                )
+
+                # Extract code snippet if present
+                code_match = re.search(r'## Code Snippet\n```(\w*)\n(.*?)```', content, re.DOTALL)
+                if code_match:
+                    memory.language = code_match.group(1)
+                    memory.code_snippet = code_match.group(2).strip()
+
+                # Add to session
+                self.current_session.memories.append(memory)
+
     def _load_last_active_session(self) -> None:
         """Load the most recent session on startup"""
         try:

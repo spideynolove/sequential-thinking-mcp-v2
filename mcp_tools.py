@@ -87,32 +87,53 @@ class MCPToolsHandler:
         confidence: float = 0.8,
         code_snippet: str = "",
         language: str = "",
-        pattern_type: str = "",
         tags: str = ""
     ) -> Dict[str, Any]:
-        """Store a memory with code snippets and patterns"""
+        """Store a memory with code snippets"""
         try:
             memory_id = self.session_manager.store_memory(
-                content, confidence, code_snippet, language, pattern_type, tags
+                content, confidence, code_snippet, language, tags
             )
             return {
                 "memory_id": memory_id,
                 "content": content,
                 "confidence": confidence,
-                "pattern_type": pattern_type,
                 "tags": tags.split(",") if tags else []
             }
         except Exception as e:
             return {"error": str(e)}
     
     def query_memories(self, tags: str = "", content_contains: str = "") -> Dict[str, Any]:
-        """Search memories by tags or content"""
+        """Search memories by tags or content with enhanced capabilities
+
+        Supports:
+        - Advanced tag filtering: Use comma or | for OR, & for AND
+        - Regex search: Enclose content in // to use regex patterns
+        - Returns rich metadata and context excerpts
+        """
         try:
             memories = self.session_manager.query_memories(tags, content_contains)
-            return {
+
+            # Enhance the response with query metadata
+            result = {
                 "memories": memories,
-                "count": len(memories)
+                "count": len(memories),
+                "query": {
+                    "tags": tags,
+                    "content": content_contains
+                }
             }
+
+            # Add search tips if no results found
+            if not memories:
+                result["search_tips"] = [
+                    "Try using broader tag terms",
+                    "For tag OR searches, use comma or | (tag1,tag2 or tag1|tag2)",
+                    "For tag AND searches, use & (tag1&tag2)",
+                    "For regex content search, use /pattern/"
+                ]
+
+            return result
         except Exception as e:
             return {"error": str(e)}
     
@@ -161,17 +182,18 @@ class MCPToolsHandler:
     ) -> Dict[str, Any]:
         """Export session or memories to file"""
         try:
+            output_path = self.session_manager.memory_bank_path / filename
             if export_type == "session":
                 content = self._export_session_content(format)
             else:
                 memories = self.session_manager.query_memories(tags, "")
                 content = self._export_memories_content(memories, format)
-            
-            with open(filename, 'w') as f:
+
+            with open(output_path, 'w') as f:
                 f.write(content)
-            
+
             return {
-                "filename": filename,
+                "filename": str(output_path),
                 "format": format,
                 "export_type": export_type,
                 "status": "exported"

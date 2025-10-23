@@ -38,11 +38,11 @@ class Memory:
     confidence: float = 0.8
     importance: float = 0.5
     dependencies: List[str] = field(default_factory=list)
-    
+
     code_snippet: str = ""
     language: str = ""
-    pattern_type: str = ""
-    
+    # pattern_type field removed as it's currently unused
+
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 

@@ -75,7 +75,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="store_memory",
-            description="Store a memory with code snippets and patterns",
+            description="Store a memory with code snippets",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -83,7 +83,6 @@ async def list_tools() -> List[Tool]:
                     "confidence": {"type": "number", "default": 0.8},
                     "code_snippet": {"type": "string", "default": ""},
                     "language": {"type": "string", "default": ""},
-                    "pattern_type": {"type": "string", "default": ""},
                     "tags": {"type": "string", "default": ""}
                 },
                 "required": ["content"]
@@ -91,12 +90,12 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="query_memories",
-            description="Search memories by tags or content",
+            description="Search memories by tags or content with advanced filtering",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "tags": {"type": "string", "default": ""},
-                    "content_contains": {"type": "string", "default": ""}
+                    "tags": {"type": "string", "default": "", "description": "Tags to filter by. Use comma or | for OR, & for AND (e.g., 'python,api' or 'auth&security')"},
+                    "content_contains": {"type": "string", "default": "", "description": "Text to search in memory content. Enclose in // for regex search (e.g., '/api.*key/')"}
                 }
             }
         ),

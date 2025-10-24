@@ -15,3 +15,4 @@ uv.lock
 # memory-bank/
 temp/
 trash/
+# .pytest_cache/

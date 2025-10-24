@@ -8,7 +8,6 @@ from mcp.types import TextContent
 from session_manager import UnifiedSessionManager
 from mcp_tools import MCPToolsHandler
 
-
 server = Server("sequential-thinking-mcp-v2")
 session_manager = UnifiedSessionManager()
 tools_handler = MCPToolsHandler(session_manager)
@@ -26,12 +25,19 @@ async def list_tools() -> List[Tool]:
                     "problem": {"type": "string"},
                     "success_criteria": {"type": "string"},
                     "constraints": {"type": "string", "default": ""},
-                    "session_type": {"type": "string", "default": "general", "enum": ["general", "coding", "memory"]},
+                    "session_type": {
+                        "type": "string",
+                        "default": "general",
+                        "enum": ["general", "coding", "memory"],
+                    },
                     "codebase_context": {"type": "string", "default": ""},
-                    "package_exploration_required": {"type": "boolean", "default": True}
+                    "package_exploration_required": {
+                        "type": "boolean",
+                        "default": True,
+                    },
                 },
-                "required": ["problem", "success_criteria"]
-            }
+                "required": ["problem", "success_criteria"],
+            },
         ),
         Tool(
             name="add_thought",
@@ -43,10 +49,10 @@ async def list_tools() -> List[Tool]:
                     "branch_id": {"type": "string", "default": ""},
                     "confidence": {"type": "number", "default": 0.8},
                     "dependencies": {"type": "string", "default": ""},
-                    "explore_packages": {"type": "boolean", "default": False}
+                    "explore_packages": {"type": "boolean", "default": False},
                 },
-                "required": ["content"]
-            }
+                "required": ["content"],
+            },
         ),
         Tool(
             name="create_branch",
@@ -56,10 +62,10 @@ async def list_tools() -> List[Tool]:
                 "properties": {
                     "name": {"type": "string"},
                     "from_thought": {"type": "string"},
-                    "purpose": {"type": "string"}
+                    "purpose": {"type": "string"},
                 },
-                "required": ["name", "from_thought", "purpose"]
-            }
+                "required": ["name", "from_thought", "purpose"],
+            },
         ),
         Tool(
             name="merge_branch",
@@ -68,10 +74,10 @@ async def list_tools() -> List[Tool]:
                 "type": "object",
                 "properties": {
                     "branch_id": {"type": "string"},
-                    "target_thought": {"type": "string", "default": ""}
+                    "target_thought": {"type": "string", "default": ""},
                 },
-                "required": ["branch_id"]
-            }
+                "required": ["branch_id"],
+            },
         ),
         Tool(
             name="store_memory",
@@ -83,10 +89,10 @@ async def list_tools() -> List[Tool]:
                     "confidence": {"type": "number", "default": 0.8},
                     "code_snippet": {"type": "string", "default": ""},
                     "language": {"type": "string", "default": ""},
-                    "tags": {"type": "string", "default": ""}
+                    "tags": {"type": "string", "default": ""},
                 },
-                "required": ["content"]
-            }
+                "required": ["content"],
+            },
         ),
         Tool(
             name="query_memories",
@@ -94,10 +100,18 @@ async def list_tools() -> List[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "tags": {"type": "string", "default": "", "description": "Tags to filter by. Use comma or | for OR, & for AND (e.g., 'python,api' or 'auth&security')"},
-                    "content_contains": {"type": "string", "default": "", "description": "Text to search in memory content. Enclose in // for regex search (e.g., '/api.*key/')"}
-                }
-            }
+                    "tags": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Tags to filter by. Use comma or | for OR, & for AND (e.g., 'python,api' or 'auth&security')",
+                    },
+                    "content_contains": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Text to search in memory content. Enclose in // for regex search (e.g., '/api.*key/')",
+                    },
+                },
+            },
         ),
         Tool(
             name="record_decision",
@@ -111,10 +125,17 @@ async def list_tools() -> List[Tool]:
                     "chosen_option": {"type": "string"},
                     "rationale": {"type": "string"},
                     "consequences": {"type": "string"},
-                    "package_dependencies": {"type": "string", "default": ""}
+                    "package_dependencies": {"type": "string", "default": ""},
                 },
-                "required": ["decision_title", "context", "options_considered", "chosen_option", "rationale", "consequences"]
-            }
+                "required": [
+                    "decision_title",
+                    "context",
+                    "options_considered",
+                    "chosen_option",
+                    "rationale",
+                    "consequences",
+                ],
+            },
         ),
         Tool(
             name="explore_packages",
@@ -123,10 +144,10 @@ async def list_tools() -> List[Tool]:
                 "type": "object",
                 "properties": {
                     "task_description": {"type": "string"},
-                    "language": {"type": "string", "default": "python"}
+                    "language": {"type": "string", "default": "python"},
                 },
-                "required": ["task_description"]
-            }
+                "required": ["task_description"],
+            },
         ),
         Tool(
             name="export_session",
@@ -135,40 +156,40 @@ async def list_tools() -> List[Tool]:
                 "type": "object",
                 "properties": {
                     "filename": {"type": "string"},
-                    "format": {"type": "string", "default": "markdown", "enum": ["markdown", "json"]},
-                    "export_type": {"type": "string", "default": "session", "enum": ["session", "memories"]},
-                    "tags": {"type": "string", "default": ""}
+                    "format": {
+                        "type": "string",
+                        "default": "markdown",
+                        "enum": ["markdown", "json"],
+                    },
+                    "export_type": {
+                        "type": "string",
+                        "default": "session",
+                        "enum": ["session", "memories"],
+                    },
+                    "tags": {"type": "string", "default": ""},
                 },
-                "required": ["filename"]
-            }
+                "required": ["filename"],
+            },
         ),
         Tool(
             name="list_sessions",
             description="List all saved sessions",
-            inputSchema={
-                "type": "object",
-                "properties": {}
-            }
+            inputSchema={"type": "object", "properties": {}},
         ),
         Tool(
             name="load_session",
             description="Resume a specific session",
             inputSchema={
                 "type": "object",
-                "properties": {
-                    "session_id": {"type": "string"}
-                },
-                "required": ["session_id"]
-            }
+                "properties": {"session_id": {"type": "string"}},
+                "required": ["session_id"],
+            },
         ),
         Tool(
             name="analyze_session",
             description="Analyze current session completeness and insights",
-            inputSchema={
-                "type": "object",
-                "properties": {}
-            }
-        )
+            inputSchema={"type": "object", "properties": {}},
+        ),
     ]
 
 
@@ -177,16 +198,24 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     try:
         if hasattr(tools_handler, name):
             result = getattr(tools_handler, name)(**arguments)
-            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+            return [
+                TextContent(type="text", text=json.dumps(result, indent=2, default=str))
+            ]
         else:
-            return [TextContent(type="text", text=json.dumps({"error": f"Tool {name} not found"}))]
+            return [
+                TextContent(
+                    type="text", text=json.dumps({"error": f"Tool {name} not found"})
+                )
+            ]
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
 
 async def main():
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+        await server.run(
+            read_stream, write_stream, server.create_initialization_options()
+        )
 
 
 if __name__ == "__main__":

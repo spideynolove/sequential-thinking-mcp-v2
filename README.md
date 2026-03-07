@@ -1,174 +1,167 @@
 # Sequential Thinking MCP v2
 
-A focused Model Context Protocol (MCP) server providing structured reasoning, persistent memory, and package discovery with markdown-based storage.
+`sequential-thinking-mcp-v2` is a local MCP server for structured reasoning, session persistence, and project memory. The current codebase is the older markdown-only implementation; the repository now also contains an approved design and implementation plan for a layered memory architecture better suited to long-running coding-agent work.
 
-## Architecture
+## Architecture Direction
 
-**Simple & Clean Design:**
-- **12 essential tools** (down from 39)
-- **Markdown storage** in memory-bank/ (no SQLite)
-- **4 core files:** main.py, session_manager.py, models.py, mcp_tools.py
-- **File-based sessions** with automatic directory structure
+The approved direction is:
 
-## Quick Start
+- Markdown as canonical human truth
+- `qmd` for canonical document retrieval
+- `Zvec` for promoted memory artifacts and other non-doc semantic artifacts
+- a structured metadata store for lifecycle state
+- MCP as the stable tool interface
+- cloud-assisted operation first, with local-first fallback when network access fails
+
+Design and plan documents:
+
+- `docs/plans/2026-03-08-agent-memory-reasoning-architecture-design.md`
+- `docs/plans/2026-03-08-agent-memory-architecture.md`
+
+## Why This Changes
+
+The current implementation stores sessions and memories as markdown snapshots. That is simple and inspectable, but it is weak for:
+
+- semantic recall across long-running work
+- distinguishing scratch reasoning from durable conclusions
+- checkpointing and compaction
+- large-codebase context management
+- reliable handoff between agents or sessions
+
+The target architecture keeps the human-readable markdown layer and adds explicit retrieval, promotion, and metadata boundaries.
+
+## Memory Model
+
+### Canonical Truth
+
+Markdown remains the official human-maintained truth:
+
+- design docs
+- ADRs
+- runbooks
+- module maps
+- handoff docs
+
+### Semantic Recall
+
+`Zvec` is intended to index more than just "memories". It should cover promoted non-doc artifacts such as:
+
+- promoted memories
+- investigation summaries
+- module cards
+- stable code summaries
+- architecture decisions
+- handoff bundles
+
+### Retrieval Ownership Split
+
+- `qmd`: canonical docs and document collections
+- `Zvec`: promoted memory objects and other non-doc artifacts
+- metadata store: confidence, evidence, provenance, scope, staleness, promotion status, and sync state
+
+This split is intentional. It prevents overlapping retrieval systems from fighting over the same job.
+
+## Reasoning Model
+
+The target reasoning lifecycle is:
+
+- scratch reasoning: local, bounded, disposable
+- checkpoint summaries: compact recovery points
+- promoted conclusions: reusable machine memory
+- canonical docs: durable human truth
+
+Hard rule:
+
+- raw chain-of-thought is not long-term memory by default
+- only promoted conclusions should become durable memory
+
+Promotion should be gated by:
+
+- evidence
+- confidence
+- stability beyond the current task
+- likely future reuse
+
+## Token Management
+
+The project should treat token limits as a first-class design problem.
+
+Policy defaults:
+
+- target active context ceiling: `64K`
+- compaction trigger example: `45K`
+
+These are engineering defaults, not universal facts. The core idea is:
+
+- retrieve on demand
+- checkpoint at subtask boundaries
+- compress old context
+- pass summaries and handoff bundles instead of raw transcripts
+
+## MCP Integration
+
+MCP is the stable interface layer between the agent and the memory system.
+
+Recommended MCP surface:
+
+- `retrieve_context`
+- `search_docs`
+- `search_memory`
+- `promote_memory`
+- `summarize_session`
+- `generate_handoff`
+- `map_changed_modules`
+
+The current implementation still exposes the original 12 tools. The architecture work in `docs/plans/` describes how that surface should evolve.
+
+## qmd Indexing Policy
+
+`qmd` indexing should remain a controlled workflow. Do not treat it like a chatty automatic hook that re-indexes on every tiny change, and do not modify qmd's DB directly. Batch or queue indexing work instead.
+
+## Cloud-Assisted, Local-First Fallback
+
+Provider policy for the target system:
+
+- embeddings: cloud-assisted first, local fallback
+- summarization/compression: cloud-assisted first, local fallback
+- retrieval: local against indexed artifacts whenever possible
+
+This repository is being designed to work even when internet access fails.
+
+## Current Repository Layout
+
+```text
+.
+├── CLAUDE.md
+├── README.md
+├── docs/plans/
+├── main.py
+├── mcp_tools.py
+├── models.py
+├── session_manager.py
+├── errors.py
+├── memory-bank/
+└── tests/
+```
+
+## Current Server Components
+
+- `main.py`: MCP entry point and tool registration
+- `mcp_tools.py`: current business logic for exposed tools
+- `session_manager.py`: session persistence and memory-bank file operations
+- `models.py`: current dataclasses and enums
+- `errors.py`: exception hierarchy
+
+## Historical Setup Note
+
+Older docs referenced:
 
 ```bash
-git clone https://github.com/spideynolove/sequential-thinking-mcp-v2.git
-cd sequential-thinking-mcp-v2
 uv sync
 uv run main.py
 ```
 
-**Claude Desktop Integration:**
-```json
-{
-  "mcpServers": {
-    "sequential-thinking": {
-      "command": "uv",
-      "args": ["run", "/path/to/sequential-thinking-mcp-v2/main.py"]
-    }
-  }
-}
-```
-
-## Core Tools (12)
-
-### Session Management
-- **`start_session`** - Create thinking/coding/memory sessions
-- **`list_sessions`** - List all saved sessions  
-- **`load_session`** - Resume specific session
-- **`analyze_session`** - Analyze session completeness
-
-### Thinking & Memory
-- **`add_thought`** - Add structured reasoning with optional package exploration
-- **`create_branch`** - Alternative reasoning paths
-- **`merge_branch`** - Combine insights from branches
-- **`store_memory`** - Persist insights with code snippets
-- **`query_memories`** - Search by tags or content
-
-### Development
-- **`record_decision`** - Architecture decisions with context
-- **`explore_packages`** - Discover relevant libraries  
-- **`export_session`** - Export to markdown/JSON
-
-## Usage Examples
-
-### Basic Session
-```python
-# Start session
-start_session(
-    problem="Build user authentication system",
-    success_criteria="Secure JWT-based auth with refresh tokens",
-    session_type="coding"
-)
-
-# Add structured thinking
-add_thought(
-    content="Research existing auth libraries before custom implementation", 
-    explore_packages=True
-)
-
-# Store reusable knowledge
-store_memory(
-    content="Use fastapi-users for production auth systems",
-    code_snippet="from fastapi_users import FastAPIUsers",
-    language="python",
-    tags="authentication,fastapi"
-)
-```
-
-### Memory & Decision Workflow
-```python
-# Query existing knowledge
-query_memories(tags="authentication,security")
-
-# Document architecture decision
-record_decision(
-    decision_title="Authentication Library Selection",
-    context="Need production-ready JWT auth for FastAPI",
-    options_considered="Custom JWT, FastAPI-Users, Authlib",
-    chosen_option="FastAPI-Users with custom user model",
-    rationale="Battle-tested, handles edge cases, good documentation"
-)
-
-# Export session
-export_session(filename="auth_research.md", format="markdown")
-```
-
-### Package Discovery
-```python
-# Discover relevant packages
-explore_packages("HTTP client library", language="python")
-
-# Branch reasoning for comparison
-create_branch(
-    name="http_client_comparison",
-    from_thought="base_requirement_thought",
-    purpose="Compare requests vs httpx vs aiohttp"
-)
-```
-
-## File Structure
-
-```
-/
-├── main.py              # MCP server with 12 tools
-├── session_manager.py   # File-based session operations  
-├── models.py            # Essential data structures
-├── mcp_tools.py         # Business logic for 12 tools
-├── memory-bank/         # Markdown storage
-│   ├── sessions/        # Session files
-│   ├── memories/        # Individual memories  
-│   ├── patterns/        # Code patterns
-│   └── index.md         # Session registry
-├── pyproject.toml       # Dependencies (no SQLite)
-└── README.md            # This file
-```
-
-## Session Types
-
-- **General:** Problem analysis and structured thinking
-- **Coding:** Development with automatic package discovery
-- **Memory:** Knowledge building and documentation focus
-
-## Memory Bank
-
-All data stored in human-readable markdown files:
-- **Sessions:** `memory-bank/sessions/{session-id}.md`
-- **Memories:** `memory-bank/memories/{memory-id}.md`  
-- **Index:** `memory-bank/index.md` tracks all sessions
-
-## Development Workflow
-
-1. **Research Phase:** `start_session` → `explore_packages` → `add_thought`
-2. **Decision Phase:** `record_decision` with context and rationale
-3. **Memory Phase:** `store_memory` for reusable insights
-4. **Export Phase:** `export_session` for documentation
-
-## Key Features
-
-- **No Database:** Pure markdown files for simplicity
-- **Package Discovery:** Automatic library suggestions
-- **Structured Reasoning:** Dependencies between thoughts
-- **Branch Exploration:** Multiple approaches to problems
-- **Decision Documentation:** Architecture decisions with context
-- **Memory Persistence:** Searchable knowledge base
-
-## Tool Consolidation
-
-**Simplified from 39 → 12 tools:**
-- Removed complex enterprise workflows
-- Eliminated SQLite database dependency
-- Focused on core thinking and memory features
-- Clean separation of concerns
-
-## Best Practices
-
-- **Start with exploration:** Use `explore_packages` before coding
-- **Document decisions:** Always `record_decision` for important choices  
-- **Build knowledge:** `store_memory` for reusable insights
-- **Branch when unsure:** Use `create_branch` for alternatives
-- **Query before storing:** Check `query_memories` to avoid duplication
+Use those commands only if the dependency manifest is present in your checkout. The current repository snapshot may not include `pyproject.toml`.
 
 ## License
 

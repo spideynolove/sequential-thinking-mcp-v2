@@ -16,3 +16,4 @@ uv.lock
 temp/
 trash/
 # .pytest_cache/
+.worktrees/

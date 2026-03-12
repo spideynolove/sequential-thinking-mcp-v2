@@ -17,3 +17,6 @@ temp/
 trash/
 # .pytest_cache/
 .worktrees/
+
+# Knowledge graph (project-local)
+.aim/*.jsonl

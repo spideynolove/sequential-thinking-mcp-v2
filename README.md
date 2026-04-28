@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/spideynolove-sequential-thinking-mcp-v2-badge.png)](https://mseep.ai/app/spideynolove-sequential-thinking-mcp-v2)
+
 # Sequential Thinking MCP v2
 
 `sequential-thinking-mcp-v2` is a local MCP server for structured reasoning, session persistence, and project memory. The current codebase is the older markdown-only implementation; the repository now also contains an approved design and implementation plan for a layered memory architecture better suited to long-running coding-agent work.
